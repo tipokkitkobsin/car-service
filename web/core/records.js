@@ -25,12 +25,18 @@ const neighbourError = (readings, { date, km }) => {
   return null;
 };
 
-export const validateReading = (data, reading, today, ignoreVisitId = null) => {
+// A new reading replaces one on the same date, so that one is left out of the comparison.
+const comparable = (data, date, { visitId = null, replaceDate = null, isReplacingSameDate = true }) => {
+  const isReplaced = (entry) => entry.date === replaceDate || (isReplacingSameDate && entry.date === date);
+  return allReadings({ ...data, readings: data.readings.filter((entry) => !isReplaced(entry)) }, visitId);
+};
+
+export const validateReading = (data, reading, today, options = {}) => {
   const { date, km } = reading;
   if (!isValidDate(date)) return ['วันที่ไม่ถูกต้อง'];
   if (date > today) return ['วันที่ต้องไม่เกินวันนี้'];
   if (!Number.isInteger(km) || km < 0 || km > MAX_KM) return ['เลขไมล์ต้องเป็นจำนวนเต็มบวก'];
-  const error = neighbourError(allReadings(data, ignoreVisitId), reading);
+  const error = neighbourError(comparable(data, date, options), reading);
   return error ? [error] : [];
 };
 
@@ -50,7 +56,7 @@ const detailErrors = (data, { roundKm, cost, shop = '', note = '' }) => [
 ];
 
 export const validateVisit = (data, visit, today) => [
-  ...validateReading(data, visit, today, visit.id),
+  ...validateReading(data, visit, today, { visitId: visit.id, isReplacingSameDate: false }),
   ...itemErrors(data, visit.itemIds),
   ...detailErrors(data, visit),
 ];
@@ -80,3 +86,10 @@ export const addReading = (data, reading) => ({
   ...data,
   readings: [...data.readings.filter((entry) => entry.date !== reading.date), reading].sort(byDate),
 });
+
+export const deleteReading = (data, date) => ({
+  ...data,
+  readings: data.readings.filter((entry) => entry.date !== date),
+});
+
+export const updateReading = (data, oldDate, reading) => addReading(deleteReading(data, oldDate), reading);

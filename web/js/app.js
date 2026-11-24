@@ -3,6 +3,7 @@ import { h, icon } from './dom.js';
 import { clearToken, openStore, readToken, writeToken } from './session.js';
 import { renderHistory } from './view-history.js';
 import { renderOverview } from './view-overview.js';
+import { renderReading } from './view-reading.js';
 import { renderLogin, renderSettings } from './view-settings.js';
 import { renderVisit } from './view-visit.js';
 
@@ -33,7 +34,8 @@ const currentRoute = () => {
 };
 
 const renderNav = (route) => {
-  const active = route.startsWith('#/visit') ? '#/visit' : route;
+  const active = route.startsWith('#/visit/') || route.startsWith('#/reading/') ? '#/history'
+    : route.startsWith('#/visit') ? '#/visit' : route;
   nav.replaceChildren(...TABS.map((tab) => h('a', {
     href: tab.hash,
     'aria-current': tab.hash === active ? 'page' : null,
@@ -56,6 +58,7 @@ const mutate = async (change, message) => {
 const viewFor = (route, ctx) => {
   if (route.startsWith('#/visit/')) return renderVisit(ctx, decodeURIComponent(route.slice('#/visit/'.length)));
   if (route === '#/visit') return renderVisit(ctx, null);
+  if (route.startsWith('#/reading/')) return renderReading(ctx, route.slice('#/reading/'.length));
   if (route === '#/history') return renderHistory(ctx);
   if (route === '#/settings') return renderSettings(ctx);
   return renderOverview(ctx);

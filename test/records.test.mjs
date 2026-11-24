@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addReading, addVisit, deleteVisit, validateReading, validateVisit } from '../web/core/records.js';
+import {
+  addReading, addVisit, deleteReading, deleteVisit, updateReading, validateReading, validateVisit,
+} from '../web/core/records.js';
 import { makeData, visit } from './fixture.mjs';
 
 const today = '2026-11-24';
@@ -65,4 +67,33 @@ test('adding a visit with the same id replaces it', () => {
   const second = addVisit(first, visit('v1', today, 101200, ['oil']));
   assert.equal(second.visits.length, 1);
   assert.equal(second.visits[0].km, 101200);
+});
+
+const withWrongToday = () => makeData({
+  readings: [{ date: '2026-11-01', km: 100000 }, { date: today, km: 105000 }],
+});
+
+test('a same-day reading can be corrected to a lower value', () => {
+  assert.deepEqual(validateReading(withWrongToday(), { date: today, km: 101000 }, today), []);
+  const fixed = addReading(withWrongToday(), { date: today, km: 101000 });
+  assert.deepEqual(fixed.readings.at(-1), { date: today, km: 101000 });
+});
+
+test('deleteReading removes only the reading on that date', () => {
+  const data = Object.freeze(withWrongToday());
+  const next = deleteReading(data, today);
+  assert.deepEqual(next.readings, [{ date: '2026-11-01', km: 100000 }]);
+  assert.equal(data.readings.length, 2);
+});
+
+test('updateReading can move a reading to another date', () => {
+  const next = updateReading(withWrongToday(), today, { date: '2026-11-20', km: 101000 });
+  assert.deepEqual(next.readings.map((reading) => reading.date), ['2026-11-01', '2026-11-20']);
+});
+
+test('editing a reading is validated without the old value', () => {
+  const data = makeData({ readings: [{ date: '2026-11-01', km: 100000 }, { date: today, km: 100500 }] });
+  const reading = { date: '2026-11-20', km: 101000 };
+  assert.deepEqual(validateReading(data, reading, today, { replaceDate: today }), []);
+  assert.ok(validateReading(data, reading, today).length > 0);
 });

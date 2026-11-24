@@ -21,6 +21,16 @@ const roundGroup = (roundKm, visits, car, names) => {
     h('ul', { class: 'list' }, [...visits].reverse().map((visit) => visitRow(visit, names))));
 };
 
+const readingList = (readings) => (readings.length === 0 ? null : h('section', {},
+  h('div', { class: 'round-head' },
+    h('h2', {}, 'เลขไมล์ที่จด'),
+    h('span', { class: 'muted num' }, `${readings.length} ครั้ง`)),
+  h('ul', { class: 'list' }, [...readings].reverse().map((reading) => h('li', {},
+    h('a', { class: 'visit', href: `#/reading/${reading.date}`, 'aria-label': `แก้เลขไมล์วันที่ ${formatDate(reading.date)}` },
+      h('span', { class: 'visit-top' },
+        h('span', {}, formatDate(reading.date)),
+        h('span', {}, `${formatKm(reading.km)} km`))))))));
+
 export const renderHistory = (ctx) => {
   const { visits, items, car } = ctx.data;
   const names = new Map(items.map((item) => [item.id, item.name]));
@@ -28,7 +38,8 @@ export const renderHistory = (ctx) => {
   const total = visits.reduce((sum, visit) => sum + (visit.cost ?? 0), 0);
   return h('div', {},
     h('h1', {}, 'ประวัติเช็คระยะ'),
-    h('p', { class: 'muted' }, `${visits.length} ครั้ง · รวมที่จดไว้ ${baht(total)}`),
+    h('p', { class: 'muted' }, `${visits.length} ครั้ง · รวมที่จดไว้ ${baht(total)} · แตะรายการเพื่อแก้หรือลบ`),
+    readingList(ctx.data.readings),
     visits.length === 0
       ? h('p', { class: 'card' }, 'ยังไม่มีประวัติ')
       : rounds.map((round) => roundGroup(round, visits.filter((visit) => visit.roundKm === round), car, names)));

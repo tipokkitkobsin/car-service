@@ -1,10 +1,12 @@
 import {
-  ActionRowBuilder, Client, Events, GatewayIntentBits, MessageFlags, ModalBuilder,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Events, GatewayIntentBits, MessageFlags, ModalBuilder,
   SlashCommandBuilder, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
 import { createStore, StoreError } from '../../web/core/github-store.js';
 import { todayInBangkok } from '../../web/core/schedule.js';
-import { isAllowed, recordKm, statusText } from './handlers.mjs';
+import { isAllowed, recordKm, statusText, undoKm } from './handlers.mjs';
+
+const UNDO_PATTERN = /^km:undo:(\d{4}-\d{2}-\d{2}):(\d{1,7})$/;
 
 const requireEnv = (name) => {
   const value = process.env[name]?.trim();
@@ -41,6 +43,15 @@ const kmModal = () => new ModalBuilder().setCustomId('km:submit').setTitle('ก�
     .setPlaceholder('115000').setMinLength(1).setMaxLength(9).setRequired(true)),
 );
 
+const kmReply = ({ text, reading }) => {
+  if (!reading) return { content: text, components: [] };
+  const buttons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('km:open').setLabel('แก้').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`km:undo:${reading.date}:${reading.km}`).setLabel('ลบรายการนี้').setStyle(ButtonStyle.Danger),
+  );
+  return { content: text, components: [buttons] };
+};
+
 const answer = async (interaction, work) => {
   await interaction.deferReply(ephemeral);
   try {
@@ -54,15 +65,21 @@ const answer = async (interaction, work) => {
 const route = async (interaction) => {
   const today = todayInBangkok();
   if (interaction.isChatInputCommand() && interaction.commandName === 'km') {
-    return answer(interaction, () => recordKm({ raw: interaction.options.getString('value', true), store, today }));
+    return answer(interaction, async () => kmReply(await recordKm({
+      raw: interaction.options.getString('value', true), store, today,
+    })));
   }
   if (interaction.isChatInputCommand() && interaction.commandName === 'status') {
     return answer(interaction, () => statusText({ store, today }));
   }
   if (interaction.isButton() && interaction.customId === 'km:open') return interaction.showModal(kmModal());
   if (interaction.isModalSubmit() && interaction.customId === 'km:submit') {
-    return answer(interaction, () => recordKm({ raw: interaction.fields.getTextInputValue('km'), store, today }));
+    return answer(interaction, async () => kmReply(await recordKm({
+      raw: interaction.fields.getTextInputValue('km'), store, today,
+    })));
   }
+  const undo = interaction.isButton() ? UNDO_PATTERN.exec(interaction.customId) : null;
+  if (undo) return answer(interaction, () => undoKm({ date: undo[1], km: Number(undo[2]), store }));
   return undefined;
 };
 

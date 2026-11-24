@@ -33,8 +33,18 @@ const createSender = (token, channelId) => {
   };
 };
 
+const TEST_MESSAGE = {
+  content: 'ทดสอบการแจ้งเตือนเช็คระยะ: GitHub Actions ส่งเข้าห้องนี้ได้แล้ว',
+  allowed_mentions: { parse: [] },
+};
+
 const main = async () => {
   const send = createSender(requireEnv('DISCORD_BOT_TOKEN'), requireEnv('DISCORD_CHANNEL_ID'));
+  if (process.env.REMIND_TEST === 'true') {
+    await send(TEST_MESSAGE);
+    console.log('Test message sent');
+    return;
+  }
   const data = JSON.parse(await readFile(DATA_FILE, 'utf8'));
   const state = JSON.parse(await readFile(STATE_FILE, 'utf8'));
   const save = (next) => writeFile(STATE_FILE, `${JSON.stringify(next, null, 2)}\n`);

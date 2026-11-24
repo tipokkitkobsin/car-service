@@ -3,6 +3,7 @@ services:
     build:
       context: ..
       dockerfile: bot/Dockerfile
+      network: host
     image: car-service-bot:local
     container_name: car-service-bot
     env_file: .env

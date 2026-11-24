@@ -99,6 +99,8 @@ li + li > .visit { border-top: 1px solid var(--line); }
 .visit-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .interval { display: grid; grid-template-columns: 1fr 96px 76px; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
 .interval input { min-height: 44px; padding: 6px 8px; }
+.interval-head { margin-top: 12px; padding-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.card > h2:first-child { margin-top: 0; }
 
 #nav {
   position: fixed; inset: auto 0 0; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr);

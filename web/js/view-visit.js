@@ -1,5 +1,5 @@
 import { buildStatuses, daysBetween, estimateKm, formatKm, nextRound } from '../core/schedule.js';
-import { addVisit, deleteVisit, validateVisit } from '../core/records.js';
+import { addVisit, deleteVisit, isValidDate, validateVisit } from '../core/records.js';
 import { confirmDialog, field, h, parseNumber, submitting, tag } from './dom.js';
 
 const SAME_ROUND_DAYS = 45;
@@ -84,6 +84,16 @@ const fields = (ctx, visit, round) => [
   field('โน้ต', 'note', h('textarea', { id: 'note', name: 'note', maxlength: 1000, value: visit?.note ?? '' })),
 ];
 
+// A new visit's km starts as the estimate for the chosen date, until the user types one.
+const followDate = (form, ctx) => {
+  let isKmTouched = false;
+  form.elements.km.addEventListener('input', () => { isKmTouched = true; });
+  form.elements.date.addEventListener('change', (event) => {
+    if (isKmTouched || !isValidDate(event.target.value)) return;
+    form.elements.km.value = String(estimateKm(ctx.data, event.target.value).km);
+  });
+};
+
 export const renderVisit = (ctx, visitId) => {
   const visit = ctx.data.visits.find((entry) => entry.id === visitId);
   const round = visit?.roundKm ?? defaultRound(ctx.data, ctx.today);
@@ -117,5 +127,6 @@ export const renderVisit = (ctx, visitId) => {
     error,
     save,
     visit ? removeButton(ctx, visit) : null);
+  if (!visit) followDate(form, ctx);
   return form;
 };

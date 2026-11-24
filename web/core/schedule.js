@@ -118,10 +118,16 @@ const paceFrom = (readings, last, fallback) => {
 };
 
 export const estimateKm = (data, today) => {
-  const readings = allReadings(data).filter((reading) => reading.date <= today);
+  const everything = allReadings(data);
+  const readings = everything.filter((reading) => reading.date <= today);
   const last = readings[readings.length - 1];
   if (!last) {
-    return { km: data.car.baselineKm, perDay: data.car.defaultKmPerDay, isEstimated: true, last: null };
+    const perDay = data.car.defaultKmPerDay;
+    const later = everything[0];
+    const km = later
+      ? Math.max(0, later.km - Math.round(perDay * daysBetween(today, later.date)))
+      : data.car.baselineKm;
+    return { km, perDay, isEstimated: true, last: null };
   }
   const perDay = paceFrom(readings, last, data.car.defaultKmPerDay);
   const days = daysBetween(last.date, today);

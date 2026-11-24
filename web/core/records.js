@@ -13,8 +13,10 @@ export const isValidDate = (value) => {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 };
 
+// Entries on the same date may come in any order (two shops in one day), so only
+// strictly earlier and later dates are compared.
 const neighbourError = (readings, { date, km }) => {
-  const earlier = readings.filter((reading) => reading.date <= date);
+  const earlier = readings.filter((reading) => reading.date < date);
   const previous = earlier[earlier.length - 1];
   const following = readings.find((reading) => reading.date > date);
   if (previous && km < previous.km) return `เลขไมล์ต่ำกว่าที่จดไว้เมื่อ ${previous.date} (${previous.km.toLocaleString('en-US')} km)`;

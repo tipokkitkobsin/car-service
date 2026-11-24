@@ -97,3 +97,19 @@ test('editing a reading is validated without the old value', () => {
   assert.deepEqual(validateReading(data, reading, today, { replaceDate: today }), []);
   assert.ok(validateReading(data, reading, today).length > 0);
 });
+
+test('two visits on the same day can be edited in either order', () => {
+  const first = visit('a', '2026-11-23', 100123, ['oil']);
+  const second = visit('b', '2026-11-23', 100140, ['plug']);
+  const later = visit('c', '2026-11-25', 100158, ['cloth']);
+  const data = makeData({ visits: [first, second, later] });
+  assert.deepEqual(validateVisit(data, { ...first, itemIds: ['oil', 'cabin'] }, '2026-11-25'), []);
+  assert.deepEqual(validateVisit(data, { ...second, km: 100100 }, '2026-11-25'), []);
+});
+
+test('a same-day visit still cannot pass a later date', () => {
+  const first = visit('a', '2026-11-23', 100123, ['oil']);
+  const later = visit('c', '2026-11-25', 100158, ['cloth']);
+  const data = makeData({ visits: [first, later] });
+  assert.ok(validateVisit(data, { ...first, km: 100200 }, '2026-11-25').length > 0);
+});

@@ -123,3 +123,10 @@ test('nextRound follows the latest recorded round', () => {
   const data = makeData({ visits: [visit('v1', '2026-11-01', 113000, ['oil'], 120000)] });
   assert.deepEqual(nextRound(data), { km: 130000, years: 6.5, date: '2027-07-10' });
 });
+
+test('estimateKm counts back from a later reading when none came before', () => {
+  const data = makeData({ readings: [{ date: '2026-01-11', km: 150400 }] });
+  const estimate = estimateKm(data, '2026-01-01');
+  assert.equal(estimate.km, 150000);
+  assert.equal(estimate.isEstimated, true);
+});

@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildStatuses } from '../web/core/schedule.js';
+import { lifeOf, lifespans, odometerSeries, roundProgress } from '../web/core/insights.js';
+import { makeData, visit } from './fixture.mjs';
+
+const rowFor = (data, id, today) => buildStatuses(data, today).find((row) => row.item.id === id);
+
+test('life is the larger of km used and time used', () => {
+  const data = makeData({ visits: [visit('v', '2026-01-01', 100000, ['oil'])], readings: [{ date: '2026-02-01', km: 108000 }] });
+  const life = lifeOf(rowFor(data, 'oil', '2026-02-01'));
+  assert.equal(life.pct, 80);
+});
+
+test('life goes past 100 when overdue', () => {
+  const data = makeData({ visits: [visit('v', '2026-01-01', 100000, ['oil'])], readings: [{ date: '2026-02-01', km: 112000 }] });
+  assert.equal(lifeOf(rowFor(data, 'oil', '2026-02-01')).pct, 120);
+});
+
+test('items without a due date have no life bar', () => {
+  const data = makeData();
+  assert.equal(lifeOf(rowFor(data, 'tyre', '2026-02-01')), null);
+  assert.equal(lifeOf(rowFor(data, 'cloth', '2026-02-01')), null);
+});
+
+test('round progress runs from the last service to the next round', () => {
+  const data = makeData({
+    visits: [visit('v', '2026-01-01', 100000, ['oil'], 110000)],
+    readings: [{ date: '2026-02-01', km: 105000 }],
+  });
+  const progress = roundProgress(data, '2026-02-01');
+  assert.equal(progress.target.km, 120000);
+  assert.equal(progress.kmPct, 25);
+  assert.ok(progress.timePct > 0 && progress.timePct < 100);
+});
+
+test('lifespans list each install with its days, the last one still running', () => {
+  const data = makeData({
+    visits: [visit('a', '2024-01-01', 80000, ['tyre']), visit('b', '2025-01-01', 90000, ['tyre'])],
+  });
+  const spans = lifespans(data, 'tyre', '2025-07-01');
+  assert.deepEqual(spans.map((span) => [span.days, span.isCurrent]), [[366, false], [181, true]]);
+});
+
+test('odometer series marks estimated points and ends today', () => {
+  const data = makeData({
+    visits: [visit('a', '2025-01-01', 90000, ['oil']), { ...visit('g', '2025-06-01', 95000, ['tyre']), isKmEstimated: true }],
+    readings: [{ date: '2026-01-01', km: 100000 }],
+  });
+  const points = odometerSeries(data, '2026-01-11');
+  assert.deepEqual(points.map((point) => [point.date, point.isEstimated]), [
+    ['2021-01-10', true], ['2025-01-01', false], ['2025-06-01', true], ['2026-01-01', false], ['2026-01-11', true],
+  ]);
+});

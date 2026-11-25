@@ -121,5 +121,66 @@ li + li > .visit { border-top: 1px solid var(--line); }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); padding: 20px; width: min(92vw, 380px); }
 dialog::backdrop { background: rgb(0 0 0 / .5); }
+/* Home-screen widgets */
+:root { --series-km: #b93c0a; --series-time: #2563a8; --track: #e4e7e1; }
+@media (prefers-color-scheme: dark) {
+  :root { --series-km: #d46d37; --series-time: #5b93d6; --track: #30363b; }
+}
+h3 { font-size: 15px; margin: 0 0 10px; }
+.hero h1 { margin-bottom: 4px; }
+.hero-grid { display: grid; grid-template-columns: 148px 1fr; gap: 16px; align-items: center; }
+.ring-box { position: relative; width: 148px; height: 148px; }
+.ring { width: 100%; height: 100%; display: block; }
+.ring circle { fill: none; stroke-width: 11; stroke-linecap: round; }
+.ring .ring-track { stroke: var(--track); stroke-linecap: butt; }
+.ring .ring-km { stroke: var(--series-km); }
+.ring .ring-time { stroke: var(--series-time); }
+.ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.15; }
+.ring-center b { font-size: 21px; }
+.ring-center span { font-size: 12px; color: var(--muted); }
+.round-target { font-size: 20px; font-variant-numeric: tabular-nums; }
+.legend { display: grid; gap: 4px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.swatch-km { background: var(--series-km); }
+.swatch-time { background: var(--series-time); }
+.summary { grid-template-columns: repeat(4, 1fr); }
+.summary b { font-size: 20px; }
+.summary span { font-size: 12px; white-space: nowrap; }
+.summary a { padding: 10px 8px; }
+.round-head-text { display: grid; line-height: 1.35; }
+
+.life { grid-column: 1 / -1; position: relative; height: 8px; margin: 6px 0 2px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.life-fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--ok); }
+.life-overdue .life-fill { background: var(--overdue); }
+.life-watch .life-fill, .life-check .life-fill { background: var(--check); }
+.life-soon .life-fill { background: var(--soon); }
+.life-over { position: absolute; right: 0; top: 0; bottom: 0; width: 18px;
+  background: repeating-linear-gradient(135deg, var(--surface) 0 2px, transparent 2px 5px); }
+
+.chart-card { margin-bottom: 12px; }
+.spans { position: relative; display: grid; gap: 8px; padding-top: 18px; }
+.spans-layer { position: absolute; top: 0; bottom: 0; left: 76px; right: 0; pointer-events: none; }
+.spans-limit { position: absolute; top: 0; bottom: 0; border-left: 2px dashed var(--muted); }
+.spans-limit span { position: absolute; top: -2px; right: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.span-row { display: grid; grid-template-columns: 70px 1fr; gap: 2px 6px; align-items: center; }
+.span-name { font-size: 13px; color: var(--muted); }
+.span-track { position: relative; height: 12px; }
+.span-bar { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; background: var(--series-km); }
+.span-current { background: repeating-linear-gradient(135deg, var(--series-km) 0 6px, color-mix(in srgb, var(--series-km) 55%, transparent) 6px 9px); }
+.span-days { grid-column: 2; font-size: 13px; }
+.chart-card .muted { margin-top: 10px; font-size: 13px; }
+
+.odo { width: 100%; height: auto; display: block; overflow: visible; }
+.odo .grid { stroke: var(--line); stroke-width: 1; }
+.odo .axis { fill: var(--muted); font-size: 10px; font-family: var(--font); }
+.odo-line { fill: none; stroke: var(--series-km); stroke-width: 2; stroke-linejoin: round; }
+.odo .hit { fill: transparent; }
+.odo .dot { fill: var(--series-km); stroke: var(--surface); stroke-width: 2; }
+.odo .dot-est { fill: var(--surface); stroke: var(--series-km); stroke-width: 1.5; }
+.odo-label { fill: var(--text); font-size: 11px; font-weight: 600; font-family: var(--font); }
+.bottom-cta { margin-top: 20px; }
+@media (max-width: 360px) { .hero-grid { grid-template-columns: 1fr; justify-items: center; } }
+
 @media (min-width: 768px) { main { padding-top: 32px; } .hero-km { font-size: 48px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

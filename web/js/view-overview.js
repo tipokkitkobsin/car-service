@@ -1,14 +1,26 @@
 import {
-  buildStatuses, dueText, estimateKm, formatDate, formatKm, leftText, nextRound, sortByUrgency, usageOf, usageText,
+  buildStatuses, dueText, estimateKm, formatDate, formatKm, leftText, sortByUrgency, usageOf, usageText,
 } from '../core/schedule.js';
+import { lifeOf, lifespans, odometerSeries, roundProgress } from '../core/insights.js';
 import { addReading, validateReading } from '../core/records.js';
+import {
+  applySizes, lifeBar, lifespanChart, odometerChart, ringLegend, roundRing,
+} from './charts.js';
 import { field, h, icon, parseNumber, STATUS, submitting, tag } from './dom.js';
 
-const statusRow = (row) => h('li', { class: 'row' },
-  h('span', { class: 'row-name' }, row.item.name),
-  h('span', { class: 'row-left' }, leftText(row)),
-  h('span', { class: 'row-sub' },
-    [dueText(row) || 'ยังไม่มีบันทึก', row.last?.isAssumed ? ' · ฐานจากค่าสมมติ' : ''].join(''))) ;
+const MIN_HISTORY = 2;
+const SUMMARY_STATES = ['overdue', 'watch', 'check', 'soon'];
+
+const statusRow = (row) => {
+  const life = lifeOf(row);
+  return h('li', { class: 'row' },
+    h('span', { class: 'row-name' }, row.item.name),
+    h('span', { class: 'row-left' }, row.state === 'check' ? 'ยังไม่มีบันทึก' : leftText(row)),
+    life ? lifeBar(row, life) : null,
+    h('span', { class: 'row-sub' },
+      [dueText(row) || 'บันทึกครั้งแรกเพื่อเริ่มนับ', life ? `ใช้ไป ${life.pct}%` : '', row.last?.isAssumed ? 'ฐานจากค่าสมมติ' : '']
+        .filter(Boolean).join(' · ')));
+};
 
 const section = (state, rows) => (rows.length === 0 ? null : h('section', { id: `s-${state}` },
   h('h2', {}, tag(state), h('span', { class: 'num' }, `${rows.length} รายการ`)),
@@ -43,29 +55,61 @@ const kmForm = (ctx) => {
     h('div', { class: 'inline-form' }, field('เลขไมล์วันนี้', 'km-now', input), button), error);
 };
 
+const scrollTo = (state) => (event) => {
+  event.preventDefault();
+  document.getElementById(`s-${state}`)?.scrollIntoView({ block: 'start' });
+};
+
 const hero = (ctx, rows) => {
   const estimate = estimateKm(ctx.data, ctx.today);
-  const round = nextRound(ctx.data);
+  const progress = roundProgress(ctx.data, ctx.today);
   const count = (state) => rows.filter((row) => row.state === state).length;
   const lastLine = estimate.last
     ? `จดจริงล่าสุด ${formatKm(estimate.last.km)} km เมื่อ ${formatDate(estimate.last.date)} · ใช้ราว ${Math.round(estimate.perDay)} km/วัน`
     : 'ยังไม่มีเลขไมล์';
   return h('section', { class: 'card hero' },
-    h('div', {},
-      h('h1', {}, ctx.data.car.name),
-      h('p', { class: 'hero-km' }, formatKm(estimate.km), h('small', {}, estimate.isEstimated ? 'km (ประมาณ)' : 'km')),
-      h('p', { class: 'muted' }, lastLine)),
+    h('h1', {}, ctx.data.car.name),
+    h('div', { class: 'hero-grid' },
+      h('div', { class: 'ring-box' },
+        roundRing(progress),
+        h('div', { class: 'ring-center' },
+          h('b', { class: 'num' }, formatKm(estimate.km)),
+          h('span', {}, estimate.isEstimated ? 'km ประมาณ' : 'km'))),
+      h('div', { class: 'stack' },
+        h('p', { class: 'round-head-text' }, h('span', { class: 'muted' }, 'รอบถัดไป'),
+          h('strong', { class: 'round-target' }, `${formatKm(progress.target.km)} km`),
+          h('span', { class: 'muted' }, `หรือ ${progress.target.years} ปี`)),
+        ringLegend(progress),
+        h('p', { class: 'muted' }, `ตามตาราง ${formatDate(progress.target.date)}`))),
+    h('p', { class: 'muted' }, lastLine),
     kmForm(ctx),
-    h('div', { class: 'summary' }, ['overdue', 'check', 'soon'].map((state) => h('a', { href: `#s-${state}`, onClick: scrollTo(state) },
-      h('b', {}, String(count(state))), h('span', {}, STATUS[state].label)))),
-    h('div', { class: 'round' },
-      h('span', {}, h('strong', {}, `รอบถัดไป ${formatKm(round.km)} km`), ` / ${round.years} ปี`),
-      h('span', { class: 'muted' }, `ตามตาราง ${formatDate(round.date)}`)));
+    h('div', { class: 'summary' }, SUMMARY_STATES.map((state) => h('a', { href: `#s-${state}`, onClick: scrollTo(state) },
+      h('b', {}, String(count(state))), h('span', {}, STATUS[state].label)))));
 };
 
-const scrollTo = (state) => (event) => {
-  event.preventDefault();
-  document.getElementById(`s-${state}`)?.scrollIntoView({ block: 'start' });
+const spanName = (item) => (span, index) => (item.id === 'battery' ? `ลูกที่ ${index + 1}` : `ครั้งที่ ${index + 1}`);
+
+const historySection = (ctx) => {
+  const items = ctx.data.items
+    .map((item) => ({ item, spans: lifespans(ctx.data, item.id, ctx.today) }))
+    .filter(({ item, spans }) => (item.rule === 'record' || item.intervalDays) && spans.length >= MIN_HISTORY);
+  if (items.length === 0) return null;
+  return h('section', { id: 's-history' },
+    h('h2', {}, 'อายุแต่ละครั้งที่เปลี่ยน'),
+    items.map(({ item, spans }) => h('div', { class: 'card chart-card' },
+      h('h3', {}, item.name),
+      lifespanChart(spans, item.intervalDays ?? null, spanName(item)))));
+};
+
+const odometerSection = (ctx) => {
+  const points = odometerSeries(ctx.data, ctx.today);
+  if (points.length < 2) return null;
+  const { perDay } = estimateKm(ctx.data, ctx.today);
+  return h('section', { id: 's-odo' },
+    h('h2', {}, 'เลขไมล์ตั้งแต่รับรถ'),
+    h('div', { class: 'card chart-card' },
+      odometerChart(points),
+      h('p', { class: 'muted' }, `จุดทึบ = จดจริง · จุดกลวง = ค่าประมาณ · ช่วงหลังใช้ราว ${Math.round(perDay)} km/วัน`)));
 };
 
 const usageRow = (ctx, row) => {
@@ -87,7 +131,7 @@ const usageSection = (ctx, rows) => (rows.length === 0 ? null : h('section', { i
 export const renderOverview = (ctx) => {
   const rows = sortByUrgency(buildStatuses(ctx.data, ctx.today));
   const pick = (state) => rows.filter((row) => row.state === state);
-  return h('div', {},
+  const root = h('div', {},
     hero(ctx, rows),
     section('overdue', pick('overdue')),
     section('watch', pick('watch')),
@@ -95,5 +139,9 @@ export const renderOverview = (ctx) => {
     section('soon', pick('soon')),
     okSection(pick('ok')),
     usageSection(ctx, pick('record')),
-    h('a', { class: 'btn btn-primary btn-block', href: '#/visit', style: null }, icon('plus'), 'บันทึกการเข้าอู่'));
+    historySection(ctx),
+    odometerSection(ctx),
+    h('a', { class: 'btn btn-primary btn-block bottom-cta', href: '#/visit' }, icon('plus'), 'บันทึกการเข้าอู่'));
+  applySizes(root);
+  return root;
 };

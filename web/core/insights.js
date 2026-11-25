@@ -1,5 +1,7 @@
 // Numbers behind the home-screen charts. Pure functions over the stored data.
-import { allReadings, daysBetween, estimateKm, nextRound } from './schedule.js';
+import {
+  addMonths, allReadings, daysBetween, estimateKm, lastDone, nextRound,
+} from './schedule.js';
 
 const percent = (used, total) => (total > 0 ? Math.round((used / total) * 100) : 0);
 
@@ -18,18 +20,29 @@ const latestRealVisit = (data) => data.visits
   .filter((visit) => !visit.isKmEstimated)
   .reduce((latest, visit) => (!latest || visit.date >= latest.date ? visit : latest), null);
 
+// The service cycle restarts at the anchor item (engine oil): its last change + one round.
+const cycleStart = (data) => {
+  const anchor = data.items.find((item) => item.id === data.car.anchorItemId);
+  const last = anchor ? lastDone(anchor, data) : null;
+  if (last && last.km !== null) return { date: last.date, km: last.km };
+  const visit = latestRealVisit(data);
+  return visit ? { date: visit.date, km: visit.km } : { date: data.car.deliveredOn, km: 0 };
+};
+
 export const roundProgress = (data, today) => {
-  const target = nextRound(data);
-  const start = latestRealVisit(data) ?? { date: data.car.deliveredOn, km: 0 };
+  const { roundKm, roundMonths } = data.car;
+  const start = cycleStart(data);
+  const due = { km: start.km + roundKm, date: addMonths(start.date, roundMonths) };
   const km = estimateKm(data, today).km;
   return {
+    round: nextRound(data),
     start,
-    target,
+    due,
     km,
-    kmPct: percent(km - start.km, target.km - start.km),
-    timePct: percent(daysBetween(start.date, today), daysBetween(start.date, target.date)),
-    kmLeft: target.km - km,
-    daysLeft: daysBetween(today, target.date),
+    kmPct: percent(km - start.km, roundKm),
+    timePct: percent(daysBetween(start.date, today), daysBetween(start.date, due.date)),
+    kmLeft: due.km - km,
+    daysLeft: daysBetween(today, due.date),
   };
 };
 

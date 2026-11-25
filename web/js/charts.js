@@ -31,7 +31,7 @@ export const roundRing = (progress) => {
       }),
     ];
   };
-  const label = `ไปรอบ ${formatKm(progress.target.km)} km: ระยะทาง ${progress.kmPct}% เวลา ${progress.timePct}%`;
+  const label = `ถึงเช็คระยะครั้งถัดไป: ระยะทาง ${progress.kmPct}% เวลา ${progress.timePct}%`;
   return s('svg', { viewBox: '0 0 160 160', class: 'ring', role: 'img', 'aria-label': label },
     tip(label),
     arc(70, progress.kmPct, 'ring-km'),

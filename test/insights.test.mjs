@@ -29,8 +29,9 @@ test('round progress runs from the last service to the next round', () => {
     readings: [{ date: '2026-02-01', km: 105000 }],
   });
   const progress = roundProgress(data, '2026-02-01');
-  assert.equal(progress.target.km, 120000);
-  assert.equal(progress.kmPct, 25);
+  assert.equal(progress.round.km, 120000);
+  assert.equal(progress.due.km, 110000);
+  assert.equal(progress.kmPct, 50);
   assert.ok(progress.timePct > 0 && progress.timePct < 100);
 });
 
@@ -51,4 +52,18 @@ test('odometer series marks estimated points and ends today', () => {
   assert.deepEqual(points.map((point) => [point.date, point.isEstimated]), [
     ['2021-01-10', true], ['2025-01-01', false], ['2025-06-01', true], ['2026-01-01', false], ['2026-01-11', true],
   ]);
+});
+
+test('the ring counts to the next service of the anchor item, not the round name', () => {
+  const data = makeData({
+    car: { ...makeData().car, anchorItemId: 'oil' },
+    visits: [visit('v', '2026-11-23', 113444, ['oil'], 120000)],
+    readings: [{ date: '2026-12-23', km: 115444 }],
+  });
+  const progress = roundProgress(data, '2026-12-23');
+  assert.equal(progress.round.km, 130000);
+  assert.deepEqual(progress.due, { km: 123444, date: '2027-05-23' });
+  assert.equal(progress.kmPct, 20);
+  assert.equal(progress.kmLeft, 8000);
+  assert.equal(progress.daysLeft, 151);
 });

@@ -2,8 +2,9 @@ import {
   buildStatuses, daysBetween, estimateKm, formatKm, kmAt, nextRound, roundForKm,
 } from '../core/schedule.js';
 import {
-  addVisit, applyBrand, deleteVisit, isValidDate, validateVisit,
+  addVisit, deleteVisit, isBrandable, isValidDate, partsFrom, validateVisit,
 } from '../core/records.js';
+import { brandPicker, readBrand } from './brand-picker.js';
 import { KINDS, kindOf } from '../core/timeline.js';
 import { confirmDialog, field, h, parseNumber, submitting, tag } from './dom.js';
 
@@ -23,31 +24,43 @@ const roundOptions = (data, selected) => {
     `${formatKm(km)} km / ${(km / roundKm) * roundMonths / 12} ปี`));
 };
 
-const itemChecks = (ctx, chosen) => {
+const itemRow = (ctx, row, visit, isChosen) => {
+  const picker = isBrandable(row.item)
+    ? brandPicker(ctx.data, row.item, visit?.parts?.[row.item.id] ?? '', isChosen) : null;
+  const box = h('input', { type: 'checkbox', name: 'item', value: row.item.id, checked: isChosen });
+  if (picker) box.addEventListener('change', () => { picker.hidden = !box.checked; });
+  return h('div', {},
+    h('label', { class: 'check' }, box, h('span', {}, row.item.name), URGENT.has(row.state) ? tag(row.state) : null),
+    picker);
+};
+
+const itemChecks = (ctx, visit) => {
+  const chosen = new Set(visit?.itemIds ?? []);
   const rows = buildStatuses(ctx.data, ctx.today);
   const groups = [...new Set(rows.map((row) => row.item.group ?? 'อื่น ๆ'))];
   return groups.map((group) => [
     h('p', { class: 'group-title' }, group),
-    rows.filter((row) => (row.item.group ?? 'อื่น ๆ') === group).map((row) => h('label', { class: 'check' },
-      h('input', { type: 'checkbox', name: 'item', value: row.item.id, checked: chosen.has(row.item.id) }),
-      h('span', {}, row.item.name),
-      URGENT.has(row.state) ? tag(row.state) : null)),
+    rows.filter((row) => (row.item.group ?? 'อื่น ๆ') === group)
+      .map((row) => itemRow(ctx, row, visit, chosen.has(row.item.id))),
   ]);
 };
 
-const readForm = (form, base) => {
+const readForm = (form, base, data) => {
   const value = (name) => form.elements[name].value.trim();
+  const itemIds = [...form.querySelectorAll('input[name=item]:checked')].map((box) => box.value);
+  const brandable = itemIds.filter((id) => data.items.some((item) => item.id === id && isBrandable(item)));
+  const parts = partsFrom(brandable.map((id) => [id, readBrand(form, id)]));
   return {
     id: base?.id ?? `v-${crypto.randomUUID()}`,
     date: value('date'),
     km: parseNumber(value('km')),
     roundKm: Number(value('roundKm')),
-    itemIds: [...form.querySelectorAll('input[name=item]:checked')].map((box) => box.value),
+    itemIds,
     shop: value('shop'),
     cost: parseNumber(value('cost')),
     note: value('note'),
     kind: value('kind'),
-    ...(base?.parts ? { parts: base.parts } : {}),
+    ...(Object.keys(parts).length ? { parts } : {}),
     ...(form.elements.isKmEstimated.checked ? { isKmEstimated: true } : {}),
   };
 };
@@ -55,7 +68,10 @@ const readForm = (form, base) => {
 const selectDue = (form, ctx) => {
   const due = new Set(buildStatuses(ctx.data, ctx.today)
     .filter((row) => ['overdue', 'watch', 'soon'].includes(row.state)).map((row) => row.item.id));
-  form.querySelectorAll('input[name=item]').forEach((box) => { box.checked = due.has(box.value); });
+  form.querySelectorAll('input[name=item]').forEach((box) => {
+    box.checked = due.has(box.value);
+    box.dispatchEvent(new Event('change'));
+  });
 };
 
 const shopList = (data) => h('datalist', { id: 'shops' },
@@ -94,10 +110,6 @@ const fields = (ctx, visit, round) => [
     field('อู่', 'shop', h('input', { id: 'shop', name: 'shop', list: 'shops', maxlength: 200, value: visit?.shop ?? '' })),
     field('ค่าใช้จ่าย (บาท)', 'cost', h('input', { id: 'cost', name: 'cost', inputmode: 'decimal', autocomplete: 'off', value: visit?.cost ?? '' }))),
   shopList(ctx.data),
-  field('ยี่ห้อ/รุ่นของอะไหล่', 'brand', h('input', {
-    id: 'brand', name: 'brand', maxlength: 100, autocomplete: 'off',
-    placeholder: visit?.parts ? Object.values(visit.parts).join(', ') : 'เช่น Michelin Pilot Sport 5',
-  }), 'ใช้กับอะไหล่ที่ติ๊ก เช่น ยาง แบต ผ้าเบรค ไฟ เว้นว่างไว้ ยี่ห้อเดิมจะไม่เปลี่ยน'),
   field('โน้ต', 'note', h('textarea', { id: 'note', name: 'note', maxlength: 1000, value: visit?.note ?? '' })),
 ];
 
@@ -121,7 +133,7 @@ export const renderVisit = (ctx, visitId) => {
   const onSubmit = async (event) => {
     event.preventDefault();
     error.hidden = true;
-    const next = applyBrand(ctx.data, readForm(event.target, visit), event.target.elements.brand.value);
+    const next = readForm(event.target, visit, ctx.data);
     try {
       await submitting(save, () => ctx.mutate((data) => {
         const errors = validateVisit(data, next, ctx.today);
@@ -142,7 +154,8 @@ export const renderVisit = (ctx, visitId) => {
     h('fieldset', { class: 'card' },
       h('legend', {}, 'งานที่ทำ *'),
       h('button', { class: 'btn', type: 'button', onClick: () => selectDue(form, ctx) }, 'เลือกงานที่ถึงกำหนด'),
-      itemChecks(ctx, new Set(visit?.itemIds ?? []))),
+      h('p', { class: 'muted' }, 'รายการที่มียี่ห้อ ติ๊กแล้วเลือกยี่ห้อได้ ยี่ห้อที่พิมพ์ใหม่จะขึ้นในตัวเลือกครั้งต่อไป'),
+      itemChecks(ctx, visit)),
     error,
     save,
     visit ? removeButton(ctx, visit) : null);

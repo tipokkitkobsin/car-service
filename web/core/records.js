@@ -74,14 +74,21 @@ export const addVisit = (data, visit) => ({
 
 const PART_RULES = new Set(['record', 'event']);
 
-// A brand typed once applies to every part-type item ticked on the visit; blank keeps what was stored.
-export const applyBrand = (data, visit, brand) => {
-  const text = brand.trim();
-  if (!text) return visit;
-  const isPart = (id) => data.items.some((item) => item.id === id && (PART_RULES.has(item.rule) || item.intervalDays));
-  const updates = Object.fromEntries(visit.itemIds.filter(isPart).map((id) => [id, text]));
-  return { ...visit, parts: { ...(visit.parts ?? {}), ...updates } };
+export const isBrandable = (item) => PART_RULES.has(item.rule) || Boolean(item.intervalDays) || Boolean(item.hasBrand);
+
+// Brands already used for an item, newest first, then the factory part. New brands join once saved.
+export const knownBrands = (data, itemId) => {
+  const used = data.visits
+    .filter((visit) => visit.parts?.[itemId])
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((visit) => visit.parts[itemId]);
+  const original = data.items.find((item) => item.id === itemId)?.originalBrand;
+  return [...new Set([...used, ...(original ? [original] : [])])];
 };
+
+export const partsFrom = (entries) => Object.fromEntries(entries
+  .map(([id, brand]) => [id, brand.trim()])
+  .filter(([, brand]) => brand));
 
 export const deleteVisit = (data, id) => ({
   ...data,

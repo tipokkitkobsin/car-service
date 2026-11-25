@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  addReading, addVisit, applyBrand, deleteReading, deleteVisit, updateReading, validateReading, validateVisit,
+  addReading, addVisit, deleteReading, deleteVisit, isBrandable, knownBrands, partsFrom,
+  updateReading, validateReading, validateVisit,
 } from '../web/core/records.js';
 import { makeData, visit } from './fixture.mjs';
 
@@ -121,9 +122,26 @@ test('visit kind must be a known category when given', () => {
   assert.ok(validateVisit(data, { ...good, kind: 'party' }, today).length > 0);
 });
 
-test('applyBrand sets the brand on chosen part items and keeps others', () => {
-  const data = makeData();
-  const entry = { ...visit('v', today, 101000, ['tyre', 'oil']), parts: { tyre: 'Old' } };
-  assert.deepEqual(applyBrand(data, entry, 'New').parts, { tyre: 'New' });
-  assert.deepEqual(applyBrand(data, entry, '').parts, { tyre: 'Old' });
+test('knownBrands lists brands used for an item, newest first, then the factory part', () => {
+  const data = makeData({
+    items: [{ id: 'tyre', name: 'Tyre', rule: 'record', originalBrand: 'Factory' }],
+    visits: [
+      { ...visit('a', '2022-01-01', 50000, ['tyre']), parts: { tyre: 'Old brand' } },
+      { ...visit('b', '2024-01-01', 80000, ['tyre']), parts: { tyre: 'New brand' } },
+      { ...visit('c', '2025-01-01', 90000, ['tyre']), parts: { tyre: 'New brand' } },
+    ],
+  });
+  assert.deepEqual(knownBrands(data, 'tyre'), ['New brand', 'Old brand', 'Factory']);
+});
+
+test('isBrandable covers parts, mods, day items and items flagged with a brand', () => {
+  assert.equal(isBrandable({ rule: 'record' }), true);
+  assert.equal(isBrandable({ rule: 'event' }), true);
+  assert.equal(isBrandable({ rule: 'interval', intervalDays: 600 }), true);
+  assert.equal(isBrandable({ rule: 'interval', hasBrand: true }), true);
+  assert.equal(isBrandable({ rule: 'interval', intervalKm: 10000 }), false);
+});
+
+test('partsFrom keeps only items with a brand', () => {
+  assert.deepEqual(partsFrom([['tyre', ' Brand X '], ['oil', ''], ['battery', 'GS']]), { tyre: 'Brand X', battery: 'GS' });
 });

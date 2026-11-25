@@ -25,6 +25,8 @@ const titleOf = (event) => {
   return event.names.length > 2 ? `${event.names.slice(0, 2).join(', ')} +${event.names.length - 2}` : event.names.join(', ');
 };
 
+const brandsOf = (event) => [...new Set(Object.values(event.visit?.parts ?? {}))].join(' · ');
+
 const eventItem = (event) => {
   const isMilestone = event.kind === 'milestone';
   const story = event.kind === 'milestone' ? '' : storyTitle(event);
@@ -37,6 +39,7 @@ const eventItem = (event) => {
     h('strong', { class: 'tl-title' }, titleOf(event)),
     h('span', { class: 'tl-kind' }, isMilestone ? 'หมุดสำคัญ' : KINDS[event.kind]),
     detail ? h('p', { class: 'tl-detail' }, detail) : null,
+    brandsOf(event) ? h('p', { class: 'tl-brand' }, brandsOf(event)) : null,
     rest ? h('p', { class: 'tl-note' }, rest) : null,
   ];
   return h('li', { class: `tl-item tl-${event.kind}` },

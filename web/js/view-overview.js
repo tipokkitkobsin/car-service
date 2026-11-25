@@ -8,7 +8,7 @@ import {
 } from './charts.js';
 import { field, h, icon, parseNumber, STATUS, submitting, tag } from './dom.js';
 
-const MIN_HISTORY = 2;
+const MIN_HISTORY = 1;
 const SUMMARY_STATES = ['overdue', 'watch', 'check', 'soon'];
 
 const statusRow = (row) => {
@@ -87,12 +87,13 @@ const hero = (ctx, rows) => {
       h('b', {}, String(count(state))), h('span', {}, STATUS[state].label)))));
 };
 
-const spanName = (item) => (span, index) => (item.id === 'battery' ? `ลูกที่ ${index + 1}` : `ครั้งที่ ${index + 1}`);
+const spanName = (item) => (span) => (item.id === 'battery' ? `ลูกที่ ${span.number}` : `ครั้งที่ ${span.number}`);
 
 const historySection = (ctx) => {
   const items = ctx.data.items
     .map((item) => ({ item, spans: lifespans(ctx.data, item.id, ctx.today) }))
     .filter(({ item, spans }) => (item.rule === 'record' || item.intervalDays) && spans.length >= MIN_HISTORY);
+  // MIN_HISTORY counts the factory part as one span.
   if (items.length === 0) return null;
   return h('section', { id: 's-history' },
     h('h2', {}, 'อายุแต่ละครั้งที่เปลี่ยน'),

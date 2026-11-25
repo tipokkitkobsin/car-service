@@ -72,6 +72,17 @@ export const addVisit = (data, visit) => ({
   visits: [...data.visits.filter((entry) => entry.id !== visit.id), visit].sort(byDate),
 });
 
+const PART_RULES = new Set(['record', 'event']);
+
+// A brand typed once applies to every part-type item ticked on the visit; blank keeps what was stored.
+export const applyBrand = (data, visit, brand) => {
+  const text = brand.trim();
+  if (!text) return visit;
+  const isPart = (id) => data.items.some((item) => item.id === id && (PART_RULES.has(item.rule) || item.intervalDays));
+  const updates = Object.fromEntries(visit.itemIds.filter(isPart).map((id) => [id, text]));
+  return { ...visit, parts: { ...(visit.parts ?? {}), ...updates } };
+};
+
 export const deleteVisit = (data, id) => ({
   ...data,
   visits: data.visits.filter((entry) => entry.id !== id),

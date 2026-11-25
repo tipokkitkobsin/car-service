@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  addReading, addVisit, deleteReading, deleteVisit, updateReading, validateReading, validateVisit,
+  addReading, addVisit, applyBrand, deleteReading, deleteVisit, updateReading, validateReading, validateVisit,
 } from '../web/core/records.js';
 import { makeData, visit } from './fixture.mjs';
 
@@ -119,4 +119,11 @@ test('visit kind must be a known category when given', () => {
   const good = { ...visit('v1', today, 101000, ['oil']), kind: 'mod' };
   assert.deepEqual(validateVisit(data, good, today), []);
   assert.ok(validateVisit(data, { ...good, kind: 'party' }, today).length > 0);
+});
+
+test('applyBrand sets the brand on chosen part items and keeps others', () => {
+  const data = makeData();
+  const entry = { ...visit('v', today, 101000, ['tyre', 'oil']), parts: { tyre: 'Old' } };
+  assert.deepEqual(applyBrand(data, entry, 'New').parts, { tyre: 'New' });
+  assert.deepEqual(applyBrand(data, entry, '').parts, { tyre: 'Old' });
 });

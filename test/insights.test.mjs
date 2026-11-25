@@ -40,7 +40,27 @@ test('lifespans list each install with its days, the last one still running', ()
     visits: [visit('a', '2024-01-01', 80000, ['tyre']), visit('b', '2025-01-01', 90000, ['tyre'])],
   });
   const spans = lifespans(data, 'tyre', '2025-07-01');
-  assert.deepEqual(spans.map((span) => [span.days, span.isCurrent]), [[366, false], [181, true]]);
+  assert.deepEqual(spans.map((span) => [span.number, span.days, span.isCurrent]), [[0, 1086, false], [1, 366, false], [2, 181, true]]);
+  assert.equal(spans[0].isOriginal, true);
+});
+
+test('lifespans carry the brand of each install and of the original part', () => {
+  const data = makeData({
+    items: [{ id: 'tyre', name: 'Tyre', rule: 'record', originalBrand: 'Factory tyre' }],
+    visits: [{ ...visit('a', '2024-01-01', 80000, ['tyre']), parts: { tyre: 'Brand X' } }],
+  });
+  assert.deepEqual(lifespans(data, 'tyre', '2025-01-01').map((span) => span.brand), ['Factory tyre', 'Brand X']);
+});
+
+test('no original span when the first record is on the delivery date', () => {
+  const data = makeData({ visits: [visit('a', '2021-01-10', 0, ['tyre']), visit('b', '2022-01-10', 9000, ['tyre'])] });
+  assert.deepEqual(lifespans(data, 'tyre', '2022-06-01').map((span) => span.number), [1, 2]);
+});
+
+test('an item never changed shows one original span until today', () => {
+  const data = makeData({ items: [{ id: 'disc', name: 'Disc', rule: 'record' }] });
+  const spans = lifespans(data, 'disc', '2022-01-10');
+  assert.deepEqual(spans.map((span) => [span.number, span.days, span.isCurrent, span.brand]), [[0, 365, true, 'เดิมติดรถ']]);
 });
 
 test('odometer series marks estimated points and ends today', () => {

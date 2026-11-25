@@ -1,7 +1,9 @@
 import {
   buildStatuses, daysBetween, estimateKm, formatKm, kmAt, nextRound, roundForKm,
 } from '../core/schedule.js';
-import { addVisit, deleteVisit, isValidDate, validateVisit } from '../core/records.js';
+import {
+  addVisit, applyBrand, deleteVisit, isValidDate, validateVisit,
+} from '../core/records.js';
 import { KINDS, kindOf } from '../core/timeline.js';
 import { confirmDialog, field, h, parseNumber, submitting, tag } from './dom.js';
 
@@ -45,6 +47,7 @@ const readForm = (form, base) => {
     cost: parseNumber(value('cost')),
     note: value('note'),
     kind: value('kind'),
+    ...(base?.parts ? { parts: base.parts } : {}),
     ...(form.elements.isKmEstimated.checked ? { isKmEstimated: true } : {}),
   };
 };
@@ -91,6 +94,10 @@ const fields = (ctx, visit, round) => [
     field('อู่', 'shop', h('input', { id: 'shop', name: 'shop', list: 'shops', maxlength: 200, value: visit?.shop ?? '' })),
     field('ค่าใช้จ่าย (บาท)', 'cost', h('input', { id: 'cost', name: 'cost', inputmode: 'decimal', autocomplete: 'off', value: visit?.cost ?? '' }))),
   shopList(ctx.data),
+  field('ยี่ห้อ/รุ่นของอะไหล่', 'brand', h('input', {
+    id: 'brand', name: 'brand', maxlength: 100, autocomplete: 'off',
+    placeholder: visit?.parts ? Object.values(visit.parts).join(', ') : 'เช่น Michelin Pilot Sport 5',
+  }), 'ใช้กับอะไหล่ที่ติ๊ก เช่น ยาง แบต ผ้าเบรค ไฟ เว้นว่างไว้ ยี่ห้อเดิมจะไม่เปลี่ยน'),
   field('โน้ต', 'note', h('textarea', { id: 'note', name: 'note', maxlength: 1000, value: visit?.note ?? '' })),
 ];
 
@@ -114,7 +121,7 @@ export const renderVisit = (ctx, visitId) => {
   const onSubmit = async (event) => {
     event.preventDefault();
     error.hidden = true;
-    const next = readForm(event.target, visit);
+    const next = applyBrand(ctx.data, readForm(event.target, visit), event.target.elements.brand.value);
     try {
       await submitting(save, () => ctx.mutate((data) => {
         const errors = validateVisit(data, next, ctx.today);

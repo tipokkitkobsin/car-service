@@ -67,12 +67,13 @@ export const lifespanChart = (spans, limitDays, nameFor) => {
       h('div', { class: 'spans-limit', 'data-left': pct(limitDays) }, h('span', {}, `${limitDays} วัน`))) : null,
     spans.map((span, index) => h('div', {
       class: 'span-row',
-      title: `${formatDate(span.from)} ถึง ${span.isCurrent ? 'วันนี้' : formatDate(span.to)}${span.visit.note ? ` · ${span.visit.note}` : ''}`,
+      title: `${formatDate(span.from)} ถึง ${span.isCurrent ? 'วันนี้' : formatDate(span.to)}${span.visit?.note ? ` · ${span.visit.note}` : ''}`,
     },
     h('span', { class: 'span-name' }, nameFor(span, index)),
     h('span', { class: 'span-track' },
       h('span', { class: `span-bar${span.isCurrent ? ' span-current' : ''}`, 'data-width': pct(span.days) })),
-    h('span', { class: 'span-days num' }, `${span.days} วัน${span.isCurrent ? ' ·ใช้อยู่' : ''}`))));
+    h('span', { class: 'span-days' }, h('span', { class: 'num' }, `${span.days} วัน`),
+      [span.brand, span.isCurrent ? 'ใช้อยู่' : ''].filter(Boolean).map((text) => ` · ${text}`).join('')))));
 };
 
 const yearTicks = (from, to) => {

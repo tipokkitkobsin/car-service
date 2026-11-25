@@ -46,14 +46,28 @@ export const roundProgress = (data, today) => {
   };
 };
 
+const ORIGINAL_BRAND = 'เดิมติดรถ';
+
+// Each install of a part, numbered from 1. Number 0 is the factory part, when it was replaced later.
 export const lifespans = (data, itemId, today) => {
+  const item = data.items.find((entry) => entry.id === itemId);
+  const delivered = data.car.deliveredOn;
   const installs = data.visits
     .filter((visit) => visit.itemIds.includes(itemId))
     .sort((a, b) => a.date.localeCompare(b.date));
-  return installs.map((visit, index) => {
-    const end = installs[index + 1]?.date ?? today;
-    return { visit, from: visit.date, to: end, days: daysBetween(visit.date, end), isCurrent: index === installs.length - 1 };
-  });
+  const hasOriginal = installs.length === 0 || installs[0].date > delivered;
+  const original = hasOriginal ? [{
+    visit: null, from: delivered, to: installs[0]?.date ?? today, isOriginal: true, number: 0,
+    brand: item?.originalBrand ?? ORIGINAL_BRAND,
+  }] : [];
+  const changed = installs.map((visit, index) => ({
+    visit, from: visit.date, to: installs[index + 1]?.date ?? today, isOriginal: false, number: index + 1,
+    brand: visit.parts?.[itemId] ?? '',
+  }));
+  const spans = [...original, ...changed];
+  return spans.map((span, index) => ({
+    ...span, days: daysBetween(span.from, span.to), isCurrent: index === spans.length - 1,
+  }));
 };
 
 export const odometerSeries = (data, today) => {

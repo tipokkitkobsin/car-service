@@ -6,7 +6,7 @@ const SOON_KM = 1000;
 const PACE_WINDOW_DAYS = 365;
 const PACE_MIN_SPAN_DAYS = 30;
 const EARLY_CALENDAR_DAYS = 62;
-const STATE_ORDER = { overdue: 0, check: 1, soon: 2, ok: 3, record: 4 };
+const STATE_ORDER = { overdue: 0, watch: 1, check: 2, soon: 3, ok: 4, record: 5 };
 
 const toUtc = (iso) => {
   const [year, month, day] = iso.split('-').map(Number);
@@ -43,6 +43,7 @@ export const dueText = (row) => {
 
 export const leftText = (row) => {
   if (row.state === 'overdue') return `เกินมา ${row.roundsOver} รอบ`;
+  if (row.state === 'watch') return `ใช้มา ${daysBetween(row.last.date, row.dueDate) - row.daysLeft} วัน`;
   if (row.daysLeft === null) return '';
   const km = row.kmLeft === null ? '' : ` · ${formatKm(row.kmLeft)} km`;
   return `เหลือ ${row.daysLeft} วัน${km}`;
@@ -74,8 +75,11 @@ const calendarDue = (item, last) => {
   return daysBetween(last.date, candidate) <= EARLY_CALENDAR_DAYS ? `${year + 2}-${month}-01` : candidate;
 };
 
+const addDays = (iso, days) => toIso(toUtc(iso) + days * MS_PER_DAY);
+
 const dueFor = (item, last) => {
   if (item.rule === 'calendar') return { dueKm: null, dueDate: calendarDue(item, last) };
+  if (item.intervalDays) return { dueKm: null, dueDate: addDays(last.date, item.intervalDays) };
   const dueKm = last.km === null ? null : last.km + item.intervalKm;
   return { dueKm, dueDate: addMonths(last.date, item.intervalMonths) };
 };
@@ -100,7 +104,9 @@ export const itemStatus = (item, data, today, km) => {
   const { dueKm, dueDate } = dueFor(item, last);
   const kmLeft = dueKm === null ? null : dueKm - km;
   const daysLeft = daysBetween(today, dueDate);
-  const state = stateFor(kmLeft, daysLeft);
+  const hardState = stateFor(kmLeft, daysLeft);
+  // A soft item has no firm limit: past its date it is only in a caution period.
+  const state = item.isSoft && hardState === 'overdue' ? 'watch' : hardState;
   const roundsOver = state === 'overdue' ? roundsOverFor(kmLeft, daysLeft, data.car) : 0;
   return { item, last, dueKm, dueDate, kmLeft, daysLeft, state, roundsOver };
 };

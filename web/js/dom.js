@@ -15,6 +15,7 @@ const ICONS = {
 export const STATUS = {
   overdue: { label: 'เกินกำหนด', icon: 'alert' },
   check: { label: 'ต้องตรวจ', icon: 'search' },
+  watch: { label: 'ช่วงระวัง', icon: 'alert' },
   soon: { label: 'ใกล้ถึง', icon: 'clock' },
   ok: { label: 'ปกติ', icon: 'check' },
   record: { label: 'บันทึก', icon: 'note' },

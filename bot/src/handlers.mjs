@@ -56,7 +56,7 @@ export const statusText = async ({ store, today }) => {
   const { data } = await store.load();
   const estimate = estimateKm(data, today);
   const all = sortByUrgency(buildStatuses(data, today));
-  const rows = all.filter((row) => ['overdue', 'check', 'soon'].includes(row.state));
+  const rows = all.filter((row) => ['overdue', 'watch', 'check', 'soon'].includes(row.state));
   const lines = rows.map((row) => `• **${row.item.name}** ${row.state === 'check' ? 'ต้องตรวจ' : `${dueText(row)} (${leftText(row)})`}`);
   const ages = all
     .map((row) => ({ row, usage: row.state === 'record' ? usageOf(row, data, today) : null }))

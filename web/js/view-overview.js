@@ -90,6 +90,7 @@ export const renderOverview = (ctx) => {
   return h('div', {},
     hero(ctx, rows),
     section('overdue', pick('overdue')),
+    section('watch', pick('watch')),
     section('check', pick('check')),
     section('soon', pick('soon')),
     okSection(pick('ok')),

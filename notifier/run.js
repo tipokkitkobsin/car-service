@@ -3,7 +3,7 @@ import { buildStatuses, estimateKm } from '../web/core/schedule.js';
 import { formatMessage } from './format.js';
 
 const markSent = (state, next, kind) => {
-  if (kind === 'soon') return { ...state, sent: next.sent };
+  if (kind === 'soon' || kind === 'watch') return { ...state, sent: next.sent };
   if (kind === 'overdue') return { ...state, lastDigest: next.lastDigest };
   return { ...state, lastAsk: next.lastAsk };
 };

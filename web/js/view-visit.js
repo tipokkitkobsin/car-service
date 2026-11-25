@@ -5,7 +5,7 @@ import { addVisit, deleteVisit, isValidDate, validateVisit } from '../core/recor
 import { confirmDialog, field, h, parseNumber, submitting, tag } from './dom.js';
 
 const SAME_ROUND_DAYS = 45;
-const URGENT = new Set(['overdue', 'check', 'soon']);
+const URGENT = new Set(['overdue', 'watch', 'check', 'soon']);
 
 const defaultRound = (data, today) => {
   const latest = data.visits[data.visits.length - 1];
@@ -49,7 +49,7 @@ const readForm = (form, base) => {
 
 const selectDue = (form, ctx) => {
   const due = new Set(buildStatuses(ctx.data, ctx.today)
-    .filter((row) => row.state === 'overdue' || row.state === 'soon').map((row) => row.item.id));
+    .filter((row) => ['overdue', 'watch', 'soon'].includes(row.state)).map((row) => row.item.id));
   form.querySelectorAll('input[name=item]').forEach((box) => { box.checked = due.has(box.value); });
 };
 

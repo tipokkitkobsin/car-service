@@ -76,3 +76,11 @@ test('undoKm removes the reading only when it still matches', async () => {
   assert.match(await undoKm({ date: '2026-11-24', km: 101000, store }), /ลบ/);
   assert.equal(store.read().readings.length, 0);
 });
+
+test('statusText includes how long recorded parts have been used', async () => {
+  const store = memoryStore(makeData({
+    visits: [{ id: 'v', date: '2025-11-24', km: 100000, roundKm: 100000, itemIds: ['tyre'], shop: '', cost: null, note: '' }],
+    readings: [{ date: '2026-11-24', km: 110000 }],
+  }));
+  assert.match(await statusText({ store, today: '2026-11-24' }), /Tyre.*ใช้มา 1 ปี · 10,000 km/);
+});

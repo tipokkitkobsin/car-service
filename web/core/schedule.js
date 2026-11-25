@@ -63,7 +63,7 @@ export const lastDone = (item, data) => {
   const done = data.visits.filter((visit) => visit.itemIds.includes(item.id)).sort(compareVisits);
   const latest = done[done.length - 1];
   return latest
-    ? { date: latest.date, km: latest.km, visitId: latest.id, isAssumed: false }
+    ? { date: latest.date, km: latest.km, visitId: latest.id, isAssumed: false, isKmEstimated: Boolean(latest.isKmEstimated) }
     : baselineFor(item, data.car);
 };
 
@@ -107,7 +107,9 @@ export const itemStatus = (item, data, today, km) => {
 
 export const allReadings = (data, ignoreVisitId = null) => [
   ...data.readings,
-  ...data.visits.filter((visit) => visit.id !== ignoreVisitId).map(({ date, km }) => ({ date, km })),
+  ...data.visits
+    .filter((visit) => visit.id !== ignoreVisitId && !visit.isKmEstimated)
+    .map(({ date, km }) => ({ date, km })),
 ].sort((a, b) => a.date.localeCompare(b.date) || a.km - b.km);
 
 const paceFrom = (readings, last, fallback) => {
@@ -133,6 +135,33 @@ export const estimateKm = (data, today) => {
   const days = daysBetween(last.date, today);
   return { km: last.km + Math.round(perDay * days), perDay, isEstimated: days > 0, last };
 };
+
+// Odometer on a past date: a straight line between the readings around it, else the estimate.
+export const kmAt = (data, date) => {
+  const readings = allReadings(data);
+  const before = readings.filter((reading) => reading.date <= date);
+  const previous = before[before.length - 1];
+  const following = readings.find((reading) => reading.date > date);
+  if (!previous || !following) return estimateKm(data, date).km;
+  const share = daysBetween(previous.date, date) / daysBetween(previous.date, following.date);
+  return previous.km + Math.round((following.km - previous.km) * share);
+};
+
+const DAYS_PER_YEAR = 365.25;
+
+export const usageOf = (row, data, today) => {
+  if (!row.last || row.last.km === null) return null;
+  const now = estimateKm(data, today);
+  return {
+    km: Math.max(0, now.km - row.last.km),
+    years: Math.round((daysBetween(row.last.date, today) / DAYS_PER_YEAR) * 10) / 10,
+    isEstimated: now.isEstimated || Boolean(row.last.isKmEstimated),
+  };
+};
+
+export const usageText = (usage) => (
+  `ใช้มา ${usage.years} ปี · ${formatKm(usage.km)} km${usage.isEstimated ? ' (ประมาณ)' : ''}`
+);
 
 export const buildStatuses = (data, today) => {
   const { km } = estimateKm(data, today);

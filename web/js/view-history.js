@@ -7,7 +7,7 @@ const visitRow = (visit, names) => h('li', {},
   h('a', { class: 'visit', href: `#/visit/${encodeURIComponent(visit.id)}`, 'aria-label': `แก้การเข้าอู่ ${formatDate(visit.date)}` },
     h('span', { class: 'visit-top' },
       h('span', {}, formatDate(visit.date)),
-      h('span', {}, `${formatKm(visit.km)} km`)),
+      h('span', {}, `${visit.isKmEstimated ? '~' : ''}${formatKm(visit.km)} km`)),
     h('p', {}, visit.itemIds.map((id) => names.get(id) ?? id).join(', ')),
     h('p', { class: 'muted' }, [visit.shop, visit.cost === null ? '' : baht(visit.cost), visit.note].filter(Boolean).join(' · '))));
 

@@ -1,5 +1,5 @@
 import {
-  buildStatuses, dueText, estimateKm, formatDate, formatKm, leftText, nextRound, sortByUrgency,
+  buildStatuses, dueText, estimateKm, formatDate, formatKm, leftText, nextRound, sortByUrgency, usageOf, usageText,
 } from '../core/schedule.js';
 import { addReading, validateReading } from '../core/records.js';
 import { field, h, icon, parseNumber, STATUS, submitting, tag } from './dom.js';
@@ -68,6 +68,22 @@ const scrollTo = (state) => (event) => {
   document.getElementById(`s-${state}`)?.scrollIntoView({ block: 'start' });
 };
 
+const usageRow = (ctx, row) => {
+  const usage = usageOf(row, ctx.data, ctx.today);
+  const visit = ctx.data.visits.find((entry) => entry.id === row.last?.visitId);
+  const since = row.last
+    ? `ล่าสุด ${formatDate(row.last.date)}${row.last.km === null ? '' : ` ที่ ${row.last.isKmEstimated ? '~' : ''}${formatKm(row.last.km)} km`}`
+    : 'ยังไม่มีบันทึก';
+  return h('li', { class: 'row' },
+    h('span', { class: 'row-name' }, row.item.name),
+    h('span', { class: 'row-left' }, usage ? usageText(usage) : ''),
+    h('span', { class: 'row-sub' }, [since, visit?.note].filter(Boolean).join(' · ')));
+};
+
+const usageSection = (ctx, rows) => (rows.length === 0 ? null : h('section', { id: 's-usage' },
+  h('h2', {}, tag('record'), h('span', {}, 'อายุการใช้งาน')),
+  h('ul', { class: 'list' }, rows.map((row) => usageRow(ctx, row)))));
+
 export const renderOverview = (ctx) => {
   const rows = sortByUrgency(buildStatuses(ctx.data, ctx.today));
   const pick = (state) => rows.filter((row) => row.state === state);
@@ -77,5 +93,6 @@ export const renderOverview = (ctx) => {
     section('check', pick('check')),
     section('soon', pick('soon')),
     okSection(pick('ok')),
+    usageSection(ctx, pick('record')),
     h('a', { class: 'btn btn-primary btn-block', href: '#/visit', style: null }, icon('plus'), 'บันทึกการเข้าอู่'));
 };

@@ -6,7 +6,7 @@ const SOON_KM = 1000;
 const PACE_WINDOW_DAYS = 365;
 const PACE_MIN_SPAN_DAYS = 30;
 const EARLY_CALENDAR_DAYS = 62;
-const STATE_ORDER = { overdue: 0, watch: 1, check: 2, soon: 3, ok: 4, record: 5 };
+const STATE_ORDER = { overdue: 0, watch: 1, check: 2, soon: 3, ok: 4, record: 5, event: 6 };
 
 const toUtc = (iso) => {
   const [year, month, day] = iso.split('-').map(Number);
@@ -75,7 +75,7 @@ const calendarDue = (item, last) => {
   return daysBetween(last.date, candidate) <= EARLY_CALENDAR_DAYS ? `${year + 2}-${month}-01` : candidate;
 };
 
-const addDays = (iso, days) => toIso(toUtc(iso) + days * MS_PER_DAY);
+export const addDays = (iso, days) => toIso(toUtc(iso) + days * MS_PER_DAY);
 
 const dueFor = (item, last) => {
   if (item.rule === 'calendar') return { dueKm: null, dueDate: calendarDue(item, last) };
@@ -98,7 +98,7 @@ const stateFor = (kmLeft, daysLeft) => {
 
 export const itemStatus = (item, data, today, km) => {
   const blank = { item, dueKm: null, dueDate: null, kmLeft: null, daysLeft: null, roundsOver: 0 };
-  if (item.rule === 'record') return { ...blank, state: 'record', last: lastDone(item, data) };
+  if (item.rule === 'record' || item.rule === 'event') return { ...blank, state: item.rule, last: lastDone(item, data) };
   const last = lastDone(item, data);
   if (!last) return { ...blank, state: 'check', last: null };
   const { dueKm, dueDate } = dueFor(item, last);

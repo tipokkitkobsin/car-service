@@ -4,6 +4,7 @@ import { clearToken, openStore, readToken, writeToken } from './session.js';
 import { renderHistory } from './view-history.js';
 import { renderOverview } from './view-overview.js';
 import { renderReading } from './view-reading.js';
+import { renderTimeline } from './view-timeline.js';
 import { renderLogin, renderSettings } from './view-settings.js';
 import { renderVisit } from './view-visit.js';
 
@@ -11,6 +12,7 @@ const TOAST_MS = 3500;
 const TABS = [
   { hash: '#/', label: 'ภาพรวม', icon: 'gauge' },
   { hash: '#/visit', label: 'บันทึก', icon: 'plus' },
+  { hash: '#/timeline', label: 'ไทม์ไลน์', icon: 'route' },
   { hash: '#/history', label: 'ประวัติ', icon: 'history' },
   { hash: '#/settings', label: 'ตั้งค่า', icon: 'settings' },
 ];
@@ -60,6 +62,7 @@ const viewFor = (route, ctx) => {
   if (route === '#/visit') return renderVisit(ctx, null);
   if (route.startsWith('#/reading/')) return renderReading(ctx, route.slice('#/reading/'.length));
   if (route === '#/history') return renderHistory(ctx);
+  if (route === '#/timeline') return renderTimeline(ctx);
   if (route === '#/settings') return renderSettings(ctx);
   return renderOverview(ctx);
 };

@@ -113,3 +113,10 @@ test('a same-day visit still cannot pass a later date', () => {
   const data = makeData({ visits: [first, later] });
   assert.ok(validateVisit(data, { ...first, km: 100200 }, '2026-11-25').length > 0);
 });
+
+test('visit kind must be a known category when given', () => {
+  const data = withReading();
+  const good = { ...visit('v1', today, 101000, ['oil']), kind: 'mod' };
+  assert.deepEqual(validateVisit(data, good, today), []);
+  assert.ok(validateVisit(data, { ...good, kind: 'party' }, today).length > 0);
+});

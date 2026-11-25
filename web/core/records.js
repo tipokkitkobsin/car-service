@@ -6,6 +6,7 @@ const MAX_KM_PER_DAY = 1500;
 const MAX_SHOP_LENGTH = 200;
 const MAX_NOTE_LENGTH = 1000;
 const MAX_COST = 10000000;
+const VISIT_KINDS = new Set(['service', 'repair', 'mod', 'part']);
 
 export const isValidDate = (value) => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -48,7 +49,8 @@ const itemErrors = (data, itemIds) => {
   return itemIds.every((id) => known.has(id)) ? [] : ['มีรายการงานที่ไม่รู้จัก'];
 };
 
-const detailErrors = (data, { roundKm, cost, shop = '', note = '' }) => [
+const detailErrors = (data, { roundKm, cost, shop = '', note = '', kind }) => [
+  ...(kind === undefined || VISIT_KINDS.has(kind) ? [] : ['หมวดไม่ถูกต้อง']),
   ...(Number.isInteger(roundKm) && roundKm > 0 && roundKm % data.car.roundKm === 0
     ? [] : [`รอบต้องเป็นทวีคูณของ ${data.car.roundKm.toLocaleString('en-US')} km`]),
   ...(cost === null || cost === undefined || (Number.isFinite(cost) && cost >= 0 && cost <= MAX_COST)

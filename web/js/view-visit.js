@@ -2,6 +2,7 @@ import {
   buildStatuses, daysBetween, estimateKm, formatKm, kmAt, nextRound, roundForKm,
 } from '../core/schedule.js';
 import { addVisit, deleteVisit, isValidDate, validateVisit } from '../core/records.js';
+import { KINDS, kindOf } from '../core/timeline.js';
 import { confirmDialog, field, h, parseNumber, submitting, tag } from './dom.js';
 
 const SAME_ROUND_DAYS = 45;
@@ -43,6 +44,7 @@ const readForm = (form, base) => {
     shop: value('shop'),
     cost: parseNumber(value('cost')),
     note: value('note'),
+    kind: value('kind'),
     ...(form.elements.isKmEstimated.checked ? { isKmEstimated: true } : {}),
   };
 };
@@ -81,6 +83,8 @@ const fields = (ctx, visit, round) => [
   h('label', { class: 'check', htmlFor: 'isKmEstimated' },
     h('input', { type: 'checkbox', id: 'isKmEstimated', name: 'isKmEstimated', checked: Boolean(visit?.isKmEstimated) }),
     h('span', {}, 'เลขไมล์เป็นค่าประมาณ (ไม่ได้จดจากหน้าปัด)')),
+  field('หมวด', 'kind', h('select', { id: 'kind', name: 'kind' },
+    Object.entries(KINDS).map(([kind, label]) => h('option', { value: kind, selected: kind === (visit ? kindOf(visit) : 'service') }, label)))),
   field('รอบเช็คระยะ *', 'roundKm', h('select', { id: 'roundKm', name: 'roundKm' }, roundOptions(ctx.data, round)),
     'เข้าหลายอู่ในรอบเดียวกัน ให้เลือกรอบเดิม'),
   h('div', { class: 'grid-2' },

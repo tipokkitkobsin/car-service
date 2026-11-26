@@ -55,3 +55,26 @@ test('a failed send rejects', async () => {
     data: data(), state: {}, today: '2026-07-06', siteUrl: 'https://example.test/', send: async () => { throw new Error('down'); },
   }), /down/);
 });
+
+test('readJson falls back when the file does not exist yet', async () => {
+  const { readJson } = await import('../notifier/state.js');
+  const readState = (read) => readJson(read, {});
+  const missing = async () => { throw Object.assign(new Error('nope'), { code: 'ENOENT' }); };
+  assert.deepEqual(await readState(missing), {});
+  assert.deepEqual(await readState(async () => '{"a":1}'), { a: 1 });
+  await assert.rejects(readState(async () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }); }));
+});
+
+test('readJson can report a missing car file as null', async () => {
+  const { readJson } = await import('../notifier/state.js');
+  assert.equal(await readJson(async () => { throw Object.assign(new Error('x'), { code: 'ENOENT' }); }, null), null);
+});
+
+test('reminder messages follow the chosen language', async () => {
+  const { setLanguage } = await import('../web/core/i18n.js');
+  setLanguage('en');
+  const message = formatMessage({ kind: 'askKm', estimateKm: 12000, lastReadingDate: null }, 'https://example.test/');
+  setLanguage('th');
+  assert.match(message.content, /What is the odometer now/);
+  assert.equal(message.components[0].components[0].label, 'Enter odometer');
+});

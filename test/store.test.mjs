@@ -43,3 +43,24 @@ test('update stops after too many conflicts', async () => {
   const store = createStore({ ...config, fetchFn });
   await assert.rejects(store.update((data) => data, 'msg'), (error) => error.code === 'conflict');
 });
+
+test('create sends the file without a sha', async () => {
+  let sent = null;
+  const fetchFn = async (_url, options = {}) => {
+    sent = JSON.parse(options.body);
+    return json(201, { content: { sha: 'new' } });
+  };
+  const store = createStore({ ...config, fetchFn });
+  const saved = await store.create({ version: 1 }, 'setup');
+  assert.equal(saved.sha, 'new');
+  assert.equal('sha' in sent, false);
+  assert.equal(sent.message, 'setup');
+});
+
+test('repoStatus tells private, public and missing repos apart', async () => {
+  const answer = (status, body) => createStore({ ...config, fetchFn: async () => json(status, body) });
+  assert.equal(await answer(200, { private: true }).repoStatus(), 'private');
+  assert.equal(await answer(200, { private: false }).repoStatus(), 'public');
+  assert.equal(await answer(404, {}).repoStatus(), 'missing');
+  await assert.rejects(answer(401, {}).repoStatus(), { code: 'auth' });
+});

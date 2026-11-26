@@ -1,7 +1,9 @@
-// Daily job. Runs inside the private data repository's GitHub Actions workflow.
-import { readFile, writeFile } from 'node:fs/promises';
+// Daily job. Run by .github/workflows/remind.yml with the data repo checked out as the working directory.
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { todayInBangkok } from '../web/core/schedule.js';
 import { runReminders } from './run.js';
+import { readJson } from './state.js';
+import { setLanguage, t } from '../web/core/i18n.js';
 
 const DATA_FILE = 'data/car.json';
 const STATE_FILE = 'data/reminder-state.json';
@@ -33,20 +35,27 @@ const createSender = (token, channelId) => {
   };
 };
 
-const TEST_MESSAGE = {
-  content: 'ทดสอบการแจ้งเตือนเช็คระยะ: GitHub Actions ส่งเข้าห้องนี้ได้แล้ว',
+const testMessage = () => ({
+  content: t('ทดสอบการแจ้งเตือนเช็คระยะ: GitHub Actions ส่งเข้าห้องนี้ได้แล้ว'),
   allowed_mentions: { parse: [] },
-};
+});
 
 const main = async () => {
   const send = createSender(requireEnv('DISCORD_BOT_TOKEN'), requireEnv('DISCORD_CHANNEL_ID'));
+  const data = await readJson(() => readFile(DATA_FILE, 'utf8'), null);
+  // Messages follow the language saved with the car data.
+  setLanguage(data?.car.language);
   if (process.env.REMIND_TEST === 'true') {
-    await send(TEST_MESSAGE);
+    await send(testMessage());
     console.log('Test message sent');
     return;
   }
-  const data = JSON.parse(await readFile(DATA_FILE, 'utf8'));
-  const state = JSON.parse(await readFile(STATE_FILE, 'utf8'));
+  if (!data) {
+    console.log('No car data yet: open the site and finish the first-run setup');
+    return;
+  }
+  const state = await readJson(() => readFile(STATE_FILE, 'utf8'), {});
+  await mkdir('data', { recursive: true });
   const save = (next) => writeFile(STATE_FILE, `${JSON.stringify(next, null, 2)}\n`);
   await runReminders({
     data, state, today: todayInBangkok(), siteUrl: requireEnv('SITE_URL'), send, save,

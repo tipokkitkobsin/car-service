@@ -1,4 +1,5 @@
 // Reads and writes one JSON file through the GitHub Contents API.
+import { t } from './i18n.js';
 const API = 'https://api.github.com';
 const MAX_ATTEMPTS = 3;
 const CHUNK_SIZE = 32768;
@@ -27,14 +28,15 @@ export const decodeJson = (base64) => {
 };
 
 const errorFor = (status) => {
-  if (status === 401 || status === 403) return new StoreError('auth', 'GitHub token ใช้ไม่ได้ หรือไม่มีสิทธิ์ใน repo ข้อมูล');
-  if (status === 404) return new StoreError('missing', 'ไม่พบไฟล์ข้อมูล หรือ token มองไม่เห็น repo ข้อมูล');
-  if (status === 409) return new StoreError('conflict', 'ข้อมูลถูกแก้จากที่อื่นพร้อมกัน ลองใหม่อีกครั้ง');
-  return new StoreError('server', `GitHub ตอบกลับผิดพลาด (${status})`);
+  if (status === 401 || status === 403) return new StoreError('auth', t('GitHub token ใช้ไม่ได้ หรือไม่มีสิทธิ์ใน repo ข้อมูล'));
+  if (status === 404) return new StoreError('missing', t('ไม่พบไฟล์ข้อมูล หรือ token มองไม่เห็น repo ข้อมูล'));
+  if (status === 409) return new StoreError('conflict', t('ข้อมูลถูกแก้จากที่อื่นพร้อมกัน ลองใหม่อีกครั้ง'));
+  return new StoreError('server', t('GitHub ตอบกลับผิดพลาด ({status})', { status }));
 };
 
 export const createStore = ({ owner, repo, path, token, fetchFn = (...args) => fetch(...args) }) => {
-  const url = `${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`;
+  const repoUrl = `${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const url = `${repoUrl}/contents/${path}`;
   const headers = {
     Accept: 'application/vnd.github+json',
     Authorization: `Bearer ${token}`,
@@ -46,7 +48,7 @@ export const createStore = ({ owner, repo, path, token, fetchFn = (...args) => f
     try {
       response = await fetchFn(target, { cache: 'no-store', ...options, headers });
     } catch {
-      throw new StoreError('network', 'เชื่อมต่อ GitHub ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
+      throw new StoreError('network', t('เชื่อมต่อ GitHub ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่'));
     }
     if (!response.ok) throw errorFor(response.status);
     return response.json();
@@ -54,7 +56,7 @@ export const createStore = ({ owner, repo, path, token, fetchFn = (...args) => f
 
   const load = async () => {
     const body = await request(url, { method: 'GET' });
-    if (!body.content) throw new StoreError('server', 'ไฟล์ข้อมูลอ่านไม่ได้');
+    if (!body.content) throw new StoreError('server', t('ไฟล์ข้อมูลอ่านไม่ได้'));
     return { data: decodeJson(body.content), sha: body.sha };
   };
 
@@ -66,6 +68,20 @@ export const createStore = ({ owner, repo, path, token, fetchFn = (...args) => f
     return { data, sha: body.content.sha };
   };
 
+  // Writes the file for the first time, in an empty data repo.
+  const create = async (data, message) => save(data, undefined, message);
+
+  // 'private', 'public', or 'missing' (repo missing or not shared with the token).
+  const repoStatus = async () => {
+    try {
+      const body = await request(repoUrl, { method: 'GET' });
+      return body.private === true ? 'private' : 'public';
+    } catch (error) {
+      if (error.code === 'missing') return 'missing';
+      throw error;
+    }
+  };
+
   const update = async (change, message) => {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       const current = await load();
@@ -75,8 +91,8 @@ export const createStore = ({ owner, repo, path, token, fetchFn = (...args) => f
         if (error.code !== 'conflict' || attempt === MAX_ATTEMPTS) throw error;
       }
     }
-    throw new StoreError('conflict', 'ข้อมูลถูกแก้จากที่อื่นพร้อมกัน ลองใหม่อีกครั้ง');
+    throw new StoreError('conflict', t('ข้อมูลถูกแก้จากที่อื่นพร้อมกัน ลองใหม่อีกครั้ง'));
   };
 
-  return { load, save, update };
+  return { load, save, create, repoStatus, update };
 };

@@ -28,6 +28,8 @@ fi
 guild_id="$(ask 'Discord server ID')"
 channel_id="$(ask 'Discord channel ID')"
 owner_id="$(ask 'Your Discord user ID')"
+data_owner="$(ask 'GitHub account that owns the data repo')"
+data_repo="$(ask 'Data repo name (for example car-service-data)')"
 bot_token="$(ask_secret 'Discord bot token')"
 github_token="$(ask_secret 'GitHub fine-grained token')"
 
@@ -36,6 +38,8 @@ cat > "$ENV_FILE" <<EOF
 DISCORD_GUILD_ID=$guild_id
 DISCORD_CHANNEL_ID=$channel_id
 DISCORD_OWNER_ID=$owner_id
+DATA_OWNER=$data_owner
+DATA_REPO=$data_repo
 DISCORD_BOT_TOKEN=$bot_token
 GITHUB_TOKEN=$github_token
 EOF

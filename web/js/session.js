@@ -1,8 +1,11 @@
 // The GitHub token stays in this browser. By default it ends with the browser session.
+// The data source (owner and repo name) is not secret and is remembered in localStorage.
 import { createStore } from '../core/github-store.js';
+import { DATA_PATH, defaultSource, sourceErrors } from '../core/source.js';
 
 const TOKEN_KEY = 'car-service.token';
-export const DATA_SOURCE = { owner: 'tipokkitkobsin', repo: 'car-service-data', path: 'data/car.json' };
+const SOURCE_KEY = 'car-service.source';
+const LANGUAGE_KEY = 'car-service.language';
 
 const attempt = (work, fallback) => {
   try {
@@ -28,4 +31,21 @@ export const writeToken = (token, shouldRemember) => attempt(() => {
   return true;
 }, false);
 
-export const openStore = (token) => createStore({ ...DATA_SOURCE, token });
+export const readSource = () => {
+  const saved = attempt(() => JSON.parse(localStorage.getItem(SOURCE_KEY)), null);
+  return saved && sourceErrors(saved).length === 0
+    ? { owner: saved.owner, repo: saved.repo }
+    : defaultSource(location.hostname);
+};
+
+export const writeSource = (source) => {
+  const errors = sourceErrors(source);
+  if (errors.length) throw new Error(errors.join(' · '));
+  attempt(() => localStorage.setItem(SOURCE_KEY, JSON.stringify({ owner: source.owner, repo: source.repo })));
+};
+
+export const openStore = (token, source = readSource()) => createStore({ ...source, path: DATA_PATH, token });
+
+// The language chosen in this browser, used before the car data has loaded.
+export const readLanguage = () => attempt(() => localStorage.getItem(LANGUAGE_KEY), null);
+export const writeLanguage = (language) => attempt(() => localStorage.setItem(LANGUAGE_KEY, language));

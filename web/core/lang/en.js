@@ -332,6 +332,9 @@ export const en = {
   'มีรถ {count} คัน ถ้ามีหลายคัน หน้าภาพรวมจะแสดงทุกคันพร้อมกัน': '{count} car(s). With more than one, the overview shows them all together',
   'ลบรถ {name} และประวัติทั้งหมดของคันนี้? ย้อนกลับได้จากประวัติ commit เท่านั้น': 'Delete {name} and all its history? It can only be restored from the commit history',
 
+  'รถคันไหน (ถ้ามีหลายคัน)': 'Which car (if you have several)',
+  'มีรถหลายคัน เลือกด้วยตัวเลือก car: {names}': 'You have several cars. Choose one with the car option: {names}',
+
   // Page chrome
   'เช็คระยะ': 'Car service',
   'ข้ามไปเนื้อหา': 'Skip to content',
